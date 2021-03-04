@@ -133,6 +133,7 @@ module.exports = {
   listener,
   requestAccess: contacts.requestAccess,
   getAuthStatus: contacts.getAuthStatus,
+  getContactImage: contacts.getContactImage,
   getAllContacts,
   getContactsByName,
   addNewContact,

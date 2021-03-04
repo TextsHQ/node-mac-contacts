@@ -703,6 +703,44 @@ Napi::Boolean IsListening(const Napi::CallbackInfo &info) {
   return Napi::Boolean::New(env, is_listening);
 }
 
+Napi::Buffer<uint8_t> GetContactImageByID(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  const std::string id_string = info[0].As<Napi::String>().Utf8Value();
+  NSString *identifier = [NSString stringWithUTF8String:id_string.c_str()];
+
+  CNContactStore *addressBook = [[CNContactStore alloc] init];
+
+  NSArray *keys =
+      [[NSArray alloc] initWithObjects:CNContactImageDataKey,
+                                       CNContactThumbnailImageDataKey, nil];
+
+  CNContact *contact = [addressBook unifiedContactWithIdentifier:identifier
+                                                     keysToFetch:keys
+                                                           error:nil];
+
+  if (!contact)
+    return Napi::Buffer<uint8_t>::New(env, 0);
+
+  NSData *image = [contact imageData];
+  if ([contact thumbnailImageData] != NULL) {
+    if (!image || [[contact thumbnailImageData] length] < [image length]) {
+      image = [contact thumbnailImageData];
+    }
+  }
+
+  if (!image)
+    return Napi::Buffer<uint8_t>::New(env, 0);
+
+  std::vector<uint8_t> data;
+
+  const uint8 *bytes = (uint8 *)[image bytes];
+  data.assign(bytes, bytes + [image length]);
+
+  if (data.empty())
+    return Napi::Buffer<uint8_t>::New(env, 0);
+  return Napi::Buffer<uint8_t>::Copy(env, &data[0], data.size());
+}
+
 // Initializes all functions exposed to JS.
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set(Napi::String::New(env, "setupListener"),
@@ -725,6 +763,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
               Napi::Function::New(env, DeleteContact));
   exports.Set(Napi::String::New(env, "updateContact"),
               Napi::Function::New(env, UpdateContact));
+  exports.Set(Napi::String::New(env, "getContactImage"),
+              Napi::Function::New(env, GetContactImageByID));
 
   return exports;
 }
